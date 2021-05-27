@@ -44,10 +44,10 @@ end
   @doc """
   return the heap with the min item removed
 
-      iex> PairingHeap.new(1, "first") |> PairingHeap.delete_min |> PairingHeap.empty?
+      iex> PairingHeap.new(1, ["first"]) |> PairingHeap.delete_min |> PairingHeap.empty?
       true
 
-      iex> PairingHeap.new(1, "first") |> PairingHeap.delete_min |> PairingHeap.delete_min |> PairingHeap.empty?
+      iex> PairingHeap.new(1, ["first"]) |> PairingHeap.delete_min |> PairingHeap.delete_min |> PairingHeap.empty?
       true
   """
   @spec delete_min(t) :: t
@@ -62,10 +62,10 @@ end
       iex> PairingHeap.new |> PairingHeap.empty?
       true
 
-      iex> PairingHeap.new(1, "first") |> PairingHeap.empty?
+      iex> PairingHeap.new(1, ["first"]) |> PairingHeap.empty?
       false
 
-      iex> PairingHeap.new(1, "first") |> PairingHeap.delete_min |> PairingHeap.empty?
+      iex> PairingHeap.new(1, ["first"]) |> PairingHeap.delete_min |> PairingHeap.empty?
       true
   """
   @spec empty?(t) :: boolean
@@ -86,8 +86,9 @@ end
   # end
   def meld(l = {key_l, value_l, sub_l}, r = {key_r, value_r, sub_r}) do
     cond do
-      key_l < key_r -> {key_l, value_l, [r | sub_l]}
-      true          -> {key_r, value_r, [l | sub_r]}
+      key_l < key_r   -> {key_l, value_l, [r | sub_l]}
+      key_l == key_r  -> {key_l, value_l ++ value_r, sub_l}
+      true            -> {key_r, value_r, [l | sub_r]}
     end
   end
 
@@ -128,8 +129,8 @@ end
   Equivalent to:
     {min(heap), delete_min(heap)}
 
-      iex> PairingHeap.new(1, "first") |> PairingHeap.pop |> elem(0)
-      {1, "first"}
+      iex> PairingHeap.new(1, ["first"]) |> PairingHeap.pop |> elem(0)
+      {1, ["first"]}
 
   """
   @spec pop(t, element) :: {element, t}
@@ -140,8 +141,8 @@ end
   @doc """
   Add element X to priority queue
 
-      iex> PairingHeap.new |> PairingHeap.put(1, "first") |> PairingHeap.pop |> elem(0)
-      {1, "first"}
+      iex> PairingHeap.new |> PairingHeap.put(1, ["first"]) |> PairingHeap.pop |> elem(0)
+      {1, ["first"]}
   """
   @spec put(t, key, value) :: t
   def put(heap, key, value) do

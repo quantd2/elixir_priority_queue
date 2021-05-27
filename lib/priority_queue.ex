@@ -46,8 +46,8 @@ end
   @heap PairingHeap
 
 
-  @type t :: %__MODULE__{size: non_neg_integer, heap: term}
-  defstruct size: 0, heap: nil
+  @type t :: %__MODULE__{heap: term, key_set: map}
+  defstruct heap: nil, key_set: MapSet.new
 
   #
   # Public interface: priority queues
@@ -56,29 +56,30 @@ end
   @doc """
   Return new priority queue with minimum element removed
 
-      iex> [4,{8},3,{1, "first"}] |> Enum.into(PriorityQueue.new) |> PriorityQueue.delete_min |> PriorityQueue.size
+      iex> [{4, []}, {8, []}, {3, []}, {1, ["first"]}] |> Enum.into(PriorityQueue.new) |> PriorityQueue.delete_min |> PriorityQueue.size
       3
 
-      iex> [{1, "first"}] |> Enum.into(PriorityQueue.new) |> PriorityQueue.delete_min |> PriorityQueue.delete_min |> PriorityQueue.size
+      iex> [{1, ["first"]}] |> Enum.into(PriorityQueue.new) |> PriorityQueue.delete_min |> PriorityQueue.delete_min |> PriorityQueue.size
       0
   """
   @spec delete_min(t) :: t
-  def delete_min(pq = %__MODULE__{size: n, heap: heap}) do
+  def delete_min(pq = %__MODULE__{heap: {k, _, _} = heap, key_set: set}) do
     case empty?(pq) do
       true -> pq
-      _    -> %{pq | size: n - 1, heap: @heap.delete_min(heap)}
+      _    -> %{pq | heap: @heap.delete_min(heap), key_set: MapSet.delete(set, k)}
     end
   end
+  def delete_min(pq = %__MODULE__{heap: nil, key_set: _set}), do: pq
 
   @doc """
   Return new priority queue with minimum element removed
 
   Raises a PriorityQueue.EmptyError exception if the queue is empty
 
-      iex> [4,{8},3,{1, "first"}] |> Enum.into(PriorityQueue.new) |> PriorityQueue.delete_min |> PriorityQueue.size
+      iex> [{4, []} ,{8, []}, {3, []}, {1, ["first"]}] |> Enum.into(PriorityQueue.new) |> PriorityQueue.delete_min |> PriorityQueue.size
       3
 
-      iex> [{1, "first"}] |> Enum.into(PriorityQueue.new) |> PriorityQueue.delete_min! |> PriorityQueue.delete_min! |> PriorityQueue.size
+      iex> [{1, ["first"]}] |> Enum.into(PriorityQueue.new) |> PriorityQueue.delete_min! |> PriorityQueue.delete_min! |> PriorityQueue.size
       ** (PriorityQueue.EmptyError) queue empty error
   """
   @spec delete_min!(t) :: t | no_return
@@ -95,22 +96,22 @@ end
       iex> PriorityQueue.new |> PriorityQueue.empty?
       true
 
-      iex> [4,{8},3,{1, "first"}] |> Enum.into(PriorityQueue.new) |> PriorityQueue.empty?
+      iex> [{4, []} ,{8, []}, {3, []}, {1, ["first"]}] |> Enum.into(PriorityQueue.new) |> PriorityQueue.empty?
       false
   """
   @spec empty?(t) :: boolean
-  def empty?(%__MODULE__{size: 0, heap: nil}), do: true
+  def empty?(%__MODULE__{heap: nil, key_set: %MapSet{map: set}}) when map_size(set) == 0, do: true
   def empty?(_), do: false
 
   @doc """
   Merge two priority queues
 
-      iex> PriorityQueue.merge( Enum.into([4,{8}], PriorityQueue.new), Enum.into([3,{1, "first"}], PriorityQueue.new)) |> PriorityQueue.to_list
-      [{1, "first"}, {3, nil}, {4, nil}, {8, nil}]
+      iex> PriorityQueue.merge( Enum.into([{4, []}, {8, []}], PriorityQueue.new), Enum.into([{3, []}, {1, ["first"]}], PriorityQueue.new)) |> PriorityQueue.to_list
+      [{1, ["first"]}, {3, []}, {4, []}, {8, []}]
   """
   @spec merge(t, t) :: t
-  def merge(pq = %__MODULE__{size: m, heap: heap0}, %__MODULE__{size: n, heap: heap1}) do
-    %{pq | size: m + n, heap: @heap.meld(heap0, heap1)}
+  def merge(pq = %__MODULE__{heap: heap0, key_set: set0}, %__MODULE__{heap: heap1, key_set: set1}) do
+    %{pq | heap: @heap.meld(heap0, heap1), key_set: MapSet.union(set0, set1)}
   end
 
   @doc """
@@ -118,8 +119,8 @@ end
 
   If the queue is empty, returns the default value ({nil, nil} if no default value)
 
-      iex> [4,{8},3,{1, "first"}] |> Enum.into(PriorityQueue.new) |> PriorityQueue.min
-      {1, "first"}
+      iex> [{4, []} ,{8, []}, {3, []}, {1, ["first"]}] |> Enum.into(PriorityQueue.new) |> PriorityQueue.min
+      {1, ["first"]}
 
       iex> PriorityQueue.new |> PriorityQueue.min({:empty, nil})
       {:empty, nil}
@@ -132,8 +133,8 @@ end
 
   Raises a PriorityQueue.EmptyError exception if the queue is empty
 
-      iex> [4,{8},3,{1, "first"}] |> Enum.into(PriorityQueue.new) |> PriorityQueue.min!
-      {1, "first"}
+      iex> [{4, []} ,{8, []}, {3, []}, {1, ["first"]}] |> Enum.into(PriorityQueue.new) |> PriorityQueue.min!
+      {1, ["first"]}
 
       iex> PriorityQueue.new |> PriorityQueue.min!
       ** (PriorityQueue.EmptyError) queue empty error
@@ -159,11 +160,11 @@ end
   Equivalent to:
     {min(pq), delete_min(pq)}
 
-      iex> [4,{8},3,{1, "first"}] |> Enum.into(PriorityQueue.new) |> PriorityQueue.pop |> elem(0)
-      {1, "first"}
+      iex> [{4, []} ,{8, []}, {3, []}, {1, ["first"]}] |> Enum.into(PriorityQueue.new) |> PriorityQueue.pop |> elem(0)
+      {1, ["first"]}
 
-      iex> [4,{8},3,{1, "first"}] |> Enum.into(PriorityQueue.new) |> PriorityQueue.pop |> elem(1) |> PriorityQueue.to_list
-      [{3, nil}, {4, nil}, {8, nil}]
+      iex> [{4, []} ,{8, []}, {3, []}, {1, ["first"]}] |> Enum.into(PriorityQueue.new) |> PriorityQueue.pop |> elem(1) |> PriorityQueue.to_list
+      [{3, []}, {4, []}, {8, []}]
 
       iex> [{1, "first"}] |> Enum.into(PriorityQueue.new) |> PriorityQueue.pop |> elem(1) |> PriorityQueue.pop({:empty, nil}) |> elem(0)
       {:empty, nil}
@@ -172,11 +173,11 @@ end
       {:empty, nil}
   """
   @spec pop(t, element) :: {element, t}
-  def pop(pq = %__MODULE__{size: n, heap: heap}, default \\ {nil, nil}) do
+  def pop(pq = %__MODULE__{heap: heap, key_set: set}, default \\ {nil, nil}) do
     case empty?(pq) do
       true -> {default, pq}
-      _    -> {e, heap} = @heap.pop(heap, default)
-              {e, %{pq | size: n - 1, heap: heap}}
+      _    -> {{k, _v} = e, heap} = @heap.pop(heap, default)
+              {e, %{pq | heap: heap, key_set: MapSet.delete(set, k)}}
     end
   end
 
@@ -188,8 +189,8 @@ end
   Equivalent to:
     {min!(pq), delete_min!(pq)}
 
-      iex> [4,{8},3,{1, "first"}] |> Enum.into(PriorityQueue.new) |> PriorityQueue.pop! |> elem(0)
-      {1, "first"}
+      iex> [{4, []} ,{8, []}, {3, []}, {1, ["first"]}] |> Enum.into(PriorityQueue.new) |> PriorityQueue.pop! |> elem(0)
+      {1, ["first"]}
 
       iex> [{1, "first"}] |> Enum.into(PriorityQueue.new) |> PriorityQueue.pop! |> elem(1) |> PriorityQueue.pop! |> elem(0)
       ** (PriorityQueue.EmptyError) queue empty error
@@ -220,30 +221,30 @@ end
   """
   @spec put(t, {key, value}) :: t
   @spec put(t, key, value | none) :: t
-  def put(pq = %__MODULE__{ size: n, heap: heap }, {key, value}) do
-    %{pq | size: n + 1, heap: @heap.put(heap, key, value)}
+  def put(pq = %__MODULE__{heap: heap, key_set: set}, {key, value}) do
+    %{pq | heap: @heap.put(heap, key, value), key_set: MapSet.put(set, key)}
   end
-  def put(pq = %__MODULE__{ size: n, heap: heap }, key, value \\ nil) do
-    %{pq | size: n + 1, heap: @heap.put(heap, key, value)}
+  def put(pq = %__MODULE__{heap: heap, key_set: set}, key, value \\ nil) do
+    %{pq | heap: @heap.put(heap, key, value), key_set: MapSet.put(set, key)}
   end
 
   @doc """
   Number of elements in queue
 
-      iex> [4,{8},3,{1, "first"}] |> Enum.into(PriorityQueue.new) |> PriorityQueue.size
+      iex> [{4, []} ,{8, []}, {3, []}, {1, ["first"]}] |> Enum.into(PriorityQueue.new) |> PriorityQueue.size
       4
   """
   @spec size(t) :: non_neg_integer
-  def size(%__MODULE__{size: n}), do: n
+  def size(%__MODULE__{key_set: map}), do: MapSet.size(map)
 
   @doc """
   Retrieve elements from priority queue as a list in sorted order
 
-      iex> [4,{8},3,{1, "first"}] |> Enum.into(PriorityQueue.new) |> PriorityQueue.to_list
-      [{1, "first"}, {3, nil}, {4, nil}, {8, nil}]
+      iex> [{4, []}, {8, []}, {3, []}, {1, ["first"]}] |> Enum.into(PriorityQueue.new) |> PriorityQueue.to_list
+      [{1, ["first"]}, {3, []}, {4, []}, {8, []}]
   """
   @spec to_list(t) :: list
-  def to_list(%__MODULE__{size: 0, heap: nil}), do: []
+  def to_list(%__MODULE__{heap: nil}), do: []
   def to_list(pq) do
     [__MODULE__.min(pq) | to_list(delete_min(pq))]
   end
@@ -252,24 +253,23 @@ end
   Retrieve keys from priority queue as a list in sorted order (may have duplicates)
 
   Heap sort a list
-      iex> [4,{8},3,{1, "first"}] |> Enum.into(PriorityQueue.new) |> PriorityQueue.keys
+      iex> [{4, []}, {8, []}, {3, []}, {1, ["first"]}] |> Enum.into(PriorityQueue.new) |> PriorityQueue.keys
       [1, 3, 4, 8]
   """
   @spec keys(t) :: list
-  def keys(%__MODULE__{size: 0, heap: nil}), do: []
-  def keys(pq) do
-    {key, _value} = min(pq)
-    [key | keys(delete_min(pq))]
+  def keys(%__MODULE__{heap: nil}), do: []
+  def keys(%__MODULE__{key_set: set}) do
+    MapSet.to_list(set)
   end
 
   @doc """
   Retrieve values from priority queue as a list, sorted in order of their keys
 
-      iex> [4,{8, "last"},3,{1, "first"}] |> Enum.into(PriorityQueue.new) |> PriorityQueue.values
-      ["first", nil, nil, "last"]
+      iex> [{4, []}, {8, ["last"]}, {3, []}, {1, ["first"]}] |> Enum.into(PriorityQueue.new) |> PriorityQueue.values
+      [["first"], [], [], ["last"]]
   """
   @spec values(t) :: list
-  def values(%__MODULE__{size: 0, heap: nil}), do: []
+  def values(%__MODULE__{heap: nil}), do: []
   def values(pq) do
     {_k, v} = min(pq)
     [v | values(delete_min(pq))]
@@ -287,17 +287,27 @@ defimpl Collectable, for: PriorityQueue do
   @doc """
   Implements 'into' for PriorityQueue
 
-      iex> [4,{8},3,{1, "first"}] |> Enum.into(PriorityQueue.new) |> PriorityQueue.size
+      iex> [{4, []}, {8, []}, {3, []}, {1, ["first"]}] |> Enum.into(PriorityQueue.new) |> PriorityQueue.size
       4
   """
   def into(original) do
-    {original, fn
+    # {original, fn
+    #   pq, {:cont, {k, v}} -> PriorityQueue.put(pq, k, v)
+    #   pq, {:cont, {k}} -> PriorityQueue.put(pq, k, nil)
+    #   pq, {:cont, k} -> PriorityQueue.put(pq, k, nil)
+    #   pq, :done -> pq
+    #   _, :halt -> :ok
+    # end}
+
+    collector_fun = fn
       pq, {:cont, {k, v}} -> PriorityQueue.put(pq, k, v)
-      pq, {:cont, {k}} -> PriorityQueue.put(pq, k, nil)
-      pq, {:cont, k} -> PriorityQueue.put(pq, k, nil)
+      # pq, {:cont, {k}} -> PriorityQueue.put(pq, k, nil)
+      # pq, {:cont, k} -> PriorityQueue.put(pq, k, nil)
       pq, :done -> pq
-      _, :halt -> :ok
-    end}
+      _pq, :halt -> :ok
+    end
+
+    {original, collector_fun}
   end
 end
 
@@ -310,7 +320,7 @@ defimpl Enumerable, for: PriorityQueue do
   Currently traverses in priority order. This may change in the future.
   DO NOT RELY ON TRAVERSAL ORDER
 
-      iex> [4,{8},3,{1, "first"}] |> Enum.into(PriorityQueue.new) |> Enum.reduce(0, &(elem(&1,0) + &2))
+      iex> [{4, []}, {8, []}, {3, []}, {1, ["first"]}] |> Enum.into(PriorityQueue.new) |> Enum.reduce(0, &(elem(&1,0) + &2))
       16
   """
   def reduce(_,   {:halt, acc}, _fun),    do: {:halted, acc}
@@ -352,4 +362,3 @@ defimpl Enumerable, for: PriorityQueue do
   """
   def count(pq), do: {:ok, PriorityQueue.size(pq)}
 end
-

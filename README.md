@@ -69,15 +69,15 @@ We also implement the Collectable and Enumerable interfaces for the Priority Que
     iex> PriorityQueue.new |> PriorityQueue.empty?
     true
 
-    iex> [4,{8},3,{1, "first"}] |> Enum.into(PriorityQueue.new) |> PriorityQueue.min
-    {1, "first"}
+    iex> [{4, ["a"]}, {8, ["b"], {3, ["c"]} ,{1, ["first"]}] |> Enum.into(PriorityQueue.new) |> PriorityQueue.min
+    {1, ["first"]}
 
-    iex> [4,{8},3,{1, "first"}] |> Enum.into(PriorityQueue.new) |> PriorityQueue.pop |> elem(0)
-    {1, "first"}
+    iex> [{4, ["a"]}, {8, ["b"], {3, ["c"]} ,{1, ["first"]}] |> Enum.into(PriorityQueue.new) |> PriorityQueue.pop |> elem(0)
+    {1, ["first"]}
 
-    iex> [4,{8},3,{1, "first"}] |> Enum.into(PriorityQueue.new) |> PriorityQueue.size
+    iex> [{4, ["a"]}, {8, ["b"], {3, ["c"]} ,{1, ["first"]}] |> Enum.into(PriorityQueue.new) |> PriorityQueue.size
     4
 
     # Heap sort a list
-    iex> [4,{8},3,{1, "first"}] |> Enum.into(PriorityQueue.new) |> PriorityQueue.keys
+    iex> [{4, ["a"]}, {8, ["b"], {3, ["c"]} ,{1, ["first"]}] |> Enum.into(PriorityQueue.new) |> PriorityQueue.keys
     [1, 3, 4, 8]
